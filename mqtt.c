@@ -56,7 +56,7 @@ static void mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data, void
     if (priv->pong_active && now > priv->pong_active &&
         now - priv->pong_active > (priv->cfg.opts->mqtt_keepalive + 3)*1000) { //TODO
         MG_INFO(("mqtt client connction timeout"));
-        c->is_closing = 1;
+        c->is_draining = 1;
     }
 
 }
