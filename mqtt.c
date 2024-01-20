@@ -269,6 +269,8 @@ static void cloud_mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data
         now - priv->cloud_pong_active > (priv->cfg.opts->cloud_mqtt_keepalive + 3)*1000) { //TODO
         MG_INFO(("cloud mqtt client connction timeout"));
         c->is_draining = 1;
+        cloud_mqtt_event_callback(c->mgr, "disconnected");
+
     }
 
 }
@@ -278,8 +280,6 @@ static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_dat
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     MG_INFO(("cloud mqtt client connection closed"));
     priv->cloud_mqtt_conn = NULL; // Mark that we're closed
-
-    cloud_mqtt_event_callback(c->mgr, "disconnected");
 
 }
 

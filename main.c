@@ -7,7 +7,7 @@
 #define CERT "/www/iot/certs/client.cert"
 #define KEY "/www/iot/certs/client.key"
 
-#define LUA_CALLBACK_SCRIPT "/www/iot/handler/iot-agent.lua"
+#define LUA_CALLBACK_SCRIPT "NULL"
 
 static void usage(const char *prog) {
     fprintf(stderr,
