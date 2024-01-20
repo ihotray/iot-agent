@@ -58,6 +58,7 @@ struct agent_private {
     struct agent_session *sessions;
 
     int registered;
+    uint64_t disconnected_check_times;
 
 
 };

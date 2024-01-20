@@ -279,7 +279,7 @@ static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_dat
     MG_INFO(("cloud mqtt client connection closed"));
     if ( priv->registered ) {
         priv->registered = 0;
-        cloud_mqtt_event_callback(c->mgr, "disconnected");
+        priv->disconnected_check_times = 0;
     }
     priv->cloud_mqtt_conn = NULL; // Mark that we're closed
 
@@ -398,5 +398,8 @@ void timer_cloud_mqtt_fn(void *arg) {
             mg_mqtt_ping(priv->cloud_mqtt_conn);
             priv->cloud_ping_active = now;
         }
+    }
+    if (priv->registered == 0 && ++priv->disconnected_check_times % 6 == 0) {
+        cloud_mqtt_event_callback(mgr, "disconnected");
     }
 }
