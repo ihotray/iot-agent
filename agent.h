@@ -22,7 +22,7 @@ struct agent_option {
 
     const char *http_download_dir;         //download file store in
     int debug_level;
-
+    const char *callback_lua;
 };
 
 struct agent_config {

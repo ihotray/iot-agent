@@ -1,5 +1,5 @@
 PROG ?= iot-agent
-DEFS ?= -liot-base -liot-json
+DEFS ?= -liot-base -liot-json -llua
 EXTRA_CFLAGS ?= -Wall -Werror
 CFLAGS += $(DEFS) $(EXTRA_CFLAGS)
 

@@ -1,4 +1,6 @@
 
+#include <lualib.h>
+#include <lauxlib.h>
 #include <iot/cJSON.h>
 #include <iot/mongoose.h>
 #include <iot/iot.h>
@@ -180,6 +182,51 @@ void timer_mqtt_fn(void *arg) {
         }
     }
 }
+// cloud mqtt connect/disconnect callback
+void cloud_mqtt_event_callback(struct mg_mgr *mgr, const char* event) {
+    struct agent_private *priv = (struct agent_private *)mgr->userdata;
+    char *params = NULL;
+    cJSON *root = NULL;
+
+    lua_State *L = luaL_newstate();
+
+    luaL_openlibs(L);
+
+    if ( luaL_dofile(L, priv->cfg.opts->callback_lua) ) {
+        MG_ERROR(("lua dofile %s failed", priv->cfg.opts->callback_lua));
+        goto done;
+    }
+
+    lua_getfield(L, -1, "on_event");
+    if (!lua_isfunction(L, -1)) {
+        MG_ERROR(("method on_event is not a function"));
+        goto done;
+    }
+
+    root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "event", event);
+    cJSON_AddStringToObject(root, "address", priv->cfg.opts->cloud_mqtt_serve_address);
+
+    params = cJSON_Print(root);
+
+    MG_INFO(("callback on_event: %s", params));
+
+    lua_pushstring(L, params);
+
+    if (lua_pcall(L, 1, 0, 0)) {//one params, zero return values, zero error func
+        MG_ERROR(("callback failed"));
+        goto done;
+    }
+
+done:
+    if (L)
+        lua_close(L);
+    if (params)
+        free(params);
+    if (root)
+        cJSON_Delete(root);
+
+}
 
 static void cloud_mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     MG_INFO(("cloud mqtt client connection created"));
@@ -232,6 +279,8 @@ static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_dat
     MG_INFO(("cloud mqtt client connection closed"));
     priv->cloud_mqtt_conn = NULL; // Mark that we're closed
 
+    cloud_mqtt_event_callback(c->mgr, "disconnected");
+
 }
 
 static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
@@ -250,6 +299,8 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
     mg_mqtt_sub(c, &sub_opts);
     MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
     free(topic);
+
+    cloud_mqtt_event_callback(c->mgr, "connected");
 
 }
 
