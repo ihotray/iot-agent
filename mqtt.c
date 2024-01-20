@@ -277,7 +277,8 @@ static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_dat
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     MG_INFO(("cloud mqtt client connection closed"));
-    if ( priv->cloud_mqtt_conn ) {
+    if ( priv->registered ) {
+        priv->registered = 0;
         cloud_mqtt_event_callback(c->mgr, "disconnected");
     }
     priv->cloud_mqtt_conn = NULL; // Mark that we're closed
@@ -301,6 +302,7 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
     MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
     free(topic);
 
+    priv->registered = 1;
     cloud_mqtt_event_callback(c->mgr, "connected");
 
 }

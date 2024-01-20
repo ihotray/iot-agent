@@ -57,6 +57,9 @@ struct agent_private {
 
     struct agent_session *sessions;
 
+    int registered;
+
+
 };
 
 int agent_main(void *user_options);
