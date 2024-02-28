@@ -161,16 +161,19 @@ void timer_mqtt_fn(void *arg) {
     uint64_t now = mg_millis();
 
     if (priv->mqtt_conn == NULL) {
-        struct mg_mqtt_opts opts = {.clean = true,
-                                .qos = MQTT_QOS,
-                                .message = mg_str("goodbye"),
-                                .keepalive = priv->cfg.opts->mqtt_keepalive};
+        struct mg_mqtt_opts opts = { 0 };
+
+        opts.clean = true;
+        opts.qos = MQTT_QOS;
+        opts.message = mg_str("goodbye");
+        opts.keepalive = priv->cfg.opts->mqtt_keepalive;
+
         priv->mqtt_conn = mg_mqtt_connect(mgr, priv->cfg.opts->mqtt_serve_address, &opts, mqtt_cb, NULL);
         priv->ping_active = now;
         priv->pong_active = now;
 
     } else if (priv->cfg.opts->mqtt_keepalive) { //need keep alive
-        
+
         if (now < priv->ping_active) {
             MG_INFO(("system time loopback"));
             priv->ping_active = now;
@@ -239,12 +242,10 @@ static void cloud_mqtt_ev_connect(struct mg_connection *c, int ev, void *ev_data
     MG_INFO(("cloud mqtt client connection connected"));
 
     if (mg_url_is_ssl(priv->cfg.opts->cloud_mqtt_serve_address)) {
-
-        struct mg_tls_opts opts = {
-            .ca = priv->cfg.opts->cloud_mqtts_ca,
-            .cert = priv->cfg.opts->cloud_mqtts_cert,
-            .certkey = priv->cfg.opts->cloud_mqtts_certkey
-        };
+        struct mg_tls_opts opts = { 0 };
+        opts.ca = priv->cfg.opts->cloud_mqtts_ca;
+        opts.cert = priv->cfg.opts->cloud_mqtts_cert;
+        opts.certkey = priv->cfg.opts->cloud_mqtts_certkey;
 
         mg_tls_init(c, &opts);
 
@@ -376,13 +377,16 @@ void timer_cloud_mqtt_fn(void *arg) {
     uint64_t now = mg_millis();
 
     if (priv->cloud_mqtt_conn == NULL) {
-        struct mg_mqtt_opts opts = {.clean = true,
-                                .qos = MQTT_QOS,
-                                .message = mg_str("goodbye"),
-                                .keepalive = priv->cfg.opts->cloud_mqtt_keepalive,
-                                .version = 4,
-                                .user = mg_str(priv->cfg.opts->cloud_mqtt_username),
-                                .pass = mg_str(priv->cfg.opts->cloud_mqtt_password)};
+        struct mg_mqtt_opts opts = { 0 };
+
+        opts.clean = true;
+        opts.qos = MQTT_QOS;
+        opts.message = mg_str("goodbye");
+        opts.keepalive = priv->cfg.opts->cloud_mqtt_keepalive;
+        opts.version = 4;
+        opts.user = mg_str(priv->cfg.opts->cloud_mqtt_username);
+        opts.pass = mg_str(priv->cfg.opts->cloud_mqtt_password);
+
         priv->cloud_mqtt_conn = mg_mqtt_connect(mgr, priv->cfg.opts->cloud_mqtt_serve_address, &opts, cloud_mqtt_cb, NULL);
         priv->cloud_ping_active = now;
         priv->cloud_pong_active = now;
