@@ -8,16 +8,17 @@ struct agent_option {
     const char *mqtt_serve_address;      //mqtt 服务端口
     int mqtt_keepalive;                  //mqtt 保活间隔
 
+    const char *cloud_mqtt_client_id;    //cloud mqtt client id
     const char *cloud_mqtt_serve_address;
-    const char* cloud_mqtt_username;
-    const char* cloud_mqtt_password;
+    const char *cloud_mqtt_username;
+    const char *cloud_mqtt_password;
     int cloud_mqtt_keepalive;
 
     const char *cloud_mqtts_ca;
     const char *cloud_mqtts_cert;
     const char *cloud_mqtts_certkey;
 
-    const char* dns4_url;
+    const char *dns4_url;
     int dns4_timeout;
 
     const char *http_download_dir;         //download file store in

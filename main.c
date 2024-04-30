@@ -14,6 +14,7 @@ static void usage(const char *prog) {
         "IoT-SDK v.%s\n"
         "Usage: %s OPTIONS\n"
         "  -s ADDR  - mqtt server address, default: '%s'\n"
+        "  -i ID    - cloud mqtt client id, default: NULL\n"
         "  -S ADDR  - cloud mqtt server address, default: '%s'\n"
         "  -a n     - local mqtt keepalive, default: %d\n"
         "  -A n     - cloud mqtt keepalive, default: %d\n"
@@ -39,6 +40,7 @@ int main(int argc, char *argv[]) {
         .mqtt_serve_address = MQTT_LISTEN_ADDR,
         .mqtt_keepalive = 6,
 
+        .cloud_mqtt_client_id = NULL,
         .cloud_mqtt_serve_address = "mqtts://mqtt.iot.hotray.cn:8883",
         .cloud_mqtt_keepalive = 6,
 
@@ -59,6 +61,8 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-s") == 0) {
             opts.mqtt_serve_address = argv[++i];
+        } else if (strcmp(argv[i], "-i") == 0) {
+            opts.cloud_mqtt_client_id = argv[++i];
         } else if (strcmp(argv[i], "-S") == 0) {
             opts.cloud_mqtt_serve_address = argv[++i];
         } else if (strcmp(argv[i], "-a") == 0) {

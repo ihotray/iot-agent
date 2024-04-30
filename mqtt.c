@@ -379,6 +379,10 @@ void timer_cloud_mqtt_fn(void *arg) {
     if (priv->cloud_mqtt_conn == NULL) {
         struct mg_mqtt_opts opts = { 0 };
 
+        if (priv->cfg.opts->cloud_mqtt_client_id) {
+            opts.client_id = mg_str(priv->cfg.opts->cloud_mqtt_client_id);
+        }
+
         opts.clean = true;
         opts.qos = MQTT_QOS;
         opts.message = mg_str("goodbye");
