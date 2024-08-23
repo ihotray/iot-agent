@@ -235,7 +235,7 @@ static void cloud_mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data
     MG_INFO(("cloud mqtt client connection created"));
 }
 
-static void cloud_mqtt_ev_connect(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
@@ -340,7 +340,7 @@ static void cloud_mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *
             break;
 
         case MG_EV_CONNECT:
-            cloud_mqtt_ev_connect(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_connect_cb(c, ev, ev_data, fn_data);
             break;
 
         case MG_EV_ERROR:
