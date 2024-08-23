@@ -36,7 +36,7 @@ static void mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data, void
     MG_INFO(("mqtt client connection created"));
 }
 
-static void mqtt_ev_connect(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     MG_INFO(("mqtt client connection connected"));
 }
 
@@ -125,7 +125,7 @@ static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
             break;
 
         case MG_EV_CONNECT:
-            mqtt_ev_connect(c, ev, ev_data, fn_data);
+            mqtt_ev_connect_cb(c, ev, ev_data, fn_data);
             break;
 
         case MG_EV_ERROR:
