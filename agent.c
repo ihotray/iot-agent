@@ -65,8 +65,8 @@ void agent_exit(void *handle) {
 int agent_main(void *user_options) {
 
     struct agent_option *opts = (struct agent_option *)user_options;
-	void *agent_handle;
-	int ret;
+    void *agent_handle;
+    int ret;
 
     ret = agent_init(&agent_handle, opts);
     if (ret)
