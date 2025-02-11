@@ -350,10 +350,16 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
+    char *topic_prefix = NULL;
+
     cJSON *root = cJSON_ParseWithLength(data.ptr, data.len);
 
     //receive device/{devid}/rpc/request/{ServiceID}/{reqId} via agent-mqtt
-    char *topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, priv->cfg.opts->cloud_mqtt_username);
+    if (mg_strstr(topic, mg_str(IOT_AGENT_DEVICE_ALL_PREFIX))) {
+        topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, IOT_AGENT_DEVICE_ALL);
+    } else {
+        topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, priv->cfg.opts->cloud_mqtt_username);
+    }
     //dump {ServiceID}/{reqId}
     struct mg_str req_info = mg_str_n(topic.ptr + mg_str(topic_prefix).len, topic.len - mg_str(topic_prefix).len);
 

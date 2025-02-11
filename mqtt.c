@@ -291,14 +291,21 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
     // MQTT connect is successful
-    char *topic = mg_mprintf(IOT_AGENT_REQ_TOPIC, priv->cfg.opts->cloud_mqtt_username);
-    struct mg_str subt = mg_str(topic);
-
     MG_INFO(("connect to mqtt server: %s", priv->cfg.opts->cloud_mqtt_serve_address));
     struct mg_mqtt_opts sub_opts;
     memset(&sub_opts, 0, sizeof(sub_opts));
+    char *topic = mg_mprintf(IOT_AGENT_REQ_TOPIC, priv->cfg.opts->cloud_mqtt_username);
+    struct mg_str subt = mg_str(topic);
     sub_opts.topic = subt;
     sub_opts.qos = MQTT_QOS;
+    mg_mqtt_sub(c, &sub_opts);
+    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
+    free(topic);
+
+    // subscribe all
+    topic = mg_mprintf(IOT_AGENT_REQ_TOPIC, IOT_AGENT_DEVICE_ALL);
+    subt = mg_str(topic);
+    sub_opts.topic = subt;
     mg_mqtt_sub(c, &sub_opts);
     MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
     free(topic);
