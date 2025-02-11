@@ -350,13 +350,29 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
-    char *topic_prefix = NULL;
+    char *topic_prefix = NULL, *pub_rpcd_topic = NULL, *pub_controller_topic = NULL;
 
     cJSON *root = cJSON_ParseWithLength(data.ptr, data.len);
 
     //receive device/{devid}/rpc/request/{ServiceID}/{reqId} via agent-mqtt
     if (mg_strstr(topic, mg_str(IOT_AGENT_DEVICE_ALL_PREFIX))) {
         topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, IOT_AGENT_DEVICE_ALL);
+        cJSON *filter = cJSON_GetObjectItem(root, FIELD_FILTER);
+        if (cJSON_IsArray(filter)) {
+            bool matched = false;
+            cJSON *item = NULL;
+            cJSON_ArrayForEach(item, filter) {
+                if (cJSON_IsString(item)) {
+                    if (mg_strcmp(mg_str(priv->cfg.opts->cloud_mqtt_username), mg_str(cJSON_GetStringValue(item))) == 0) {
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            if (!matched) {
+                goto done;
+            }
+        }
     } else {
         topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, priv->cfg.opts->cloud_mqtt_username);
     }
@@ -364,9 +380,9 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
     struct mg_str req_info = mg_str_n(topic.ptr + mg_str(topic_prefix).len, topic.len - mg_str(topic_prefix).len);
 
     //pub to rpcd topic: mg/iot-agent/{agent-id}controller/{ServiceID}/{reqId}/iot-rpcd via local-mqtt
-    char *pub_rpcd_topic = mg_mprintf(IOT_AGENT_RPCD_CONTROLLER_TOPIC, priv->agent_id, req_info.len, req_info.ptr);
+    pub_rpcd_topic = mg_mprintf(IOT_AGENT_RPCD_CONTROLLER_TOPIC, priv->agent_id, req_info.len, req_info.ptr);
     //pub to controller topic: device/{devid}/rpc/response/{ServiceID}/{reqId} via agent-mqtt
-    char *pub_controller_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.ptr);
+    pub_controller_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.ptr);
 
     //check args
     cJSON *method = cJSON_GetObjectItem(root, FIELD_METHOD);
@@ -402,9 +418,9 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
     }
 
 done:
-    free(topic_prefix);
-    free(pub_rpcd_topic);
-    free(pub_controller_topic);
+    if (topic_prefix) free(topic_prefix);
+    if (pub_rpcd_topic) free(pub_rpcd_topic);
+    if (pub_controller_topic) free(pub_controller_topic);
     cJSON_Delete(root);
 
 }

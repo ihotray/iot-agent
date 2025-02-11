@@ -5,6 +5,7 @@
 
 #define IOT_AGENT_DEVICE_ALL "$all"
 #define IOT_AGENT_DEVICE_ALL_PREFIX "device/$all"
+#define FIELD_FILTER "filter"
 struct agent_option {
 
     const char *mqtt_serve_address;      //mqtt 服务端口
