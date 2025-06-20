@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 
         .cloud_mqtts_ca = CA,
         .cloud_mqtts_cert = CERT,
-        .cloud_mqtts_certkey = KEY,
+        .cloud_mqtts_key = KEY,
 
         .dns4_url = "udp://119.29.29.29:53",
         .dns4_timeout = 6,
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-c") == 0) {
             opts.cloud_mqtts_cert = argv[++i];
         } else if (strcmp(argv[i], "-k") == 0) {
-            opts.cloud_mqtts_certkey = argv[++i];
+            opts.cloud_mqtts_key = argv[++i];
         } else if (strcmp(argv[i], "-u") == 0) {
             opts.cloud_mqtt_username = argv[++i];
         } else if (strcmp(argv[i], "-p") == 0) {

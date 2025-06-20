@@ -11,7 +11,7 @@ struct iot_http_info {
     char topic[MQTT_MAX_TOPIC_LEN];
     int filesize;
     void *fd;
-    bool success;
+    uint64_t active;
 };
 
 
@@ -24,17 +24,17 @@ void rpc_local_rpcd_handler(struct mg_connection *c, struct mg_str topic, struct
     struct mg_str controller_topic_type = mg_str(IOT_CONTROLLER_TOPIC_TYPE);
 
     //delete mg/iot-agent/{agent-id}/
-    struct mg_str topic_type = mg_str_n(topic.ptr + topic_prefix.len, topic.len - topic_prefix.len);
+    struct mg_str topic_type = mg_str_n(topic.buf + topic_prefix.len, topic.len - topic_prefix.len);
 
     if (topic_type.len > controller_topic_type.len) {
-        topic_type = mg_str_n(topic_type.ptr, controller_topic_type.len);
+        topic_type = mg_str_n(topic_type.buf, controller_topic_type.len);
     }
 
     if (!mg_strcmp(topic_type, controller_topic_type) && priv->cloud_mqtt_conn != NULL) {
-        struct mg_str req_info = mg_str_n(topic.ptr + topic_prefix.len + controller_topic_type.len, topic.len - topic_prefix.len - controller_topic_type.len);
+        struct mg_str req_info = mg_str_n(topic.buf + topic_prefix.len + controller_topic_type.len, topic.len - topic_prefix.len - controller_topic_type.len);
 
         //pub device/{devid}/rpc/response/{ServiceID}/{reqId} via agent-mqtt
-        char *pub_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.ptr);
+        char *pub_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.buf);
         struct mg_str pubt = mg_str(pub_topic);
         struct mg_mqtt_opts pub_opts;
         memset(&pub_opts, 0, sizeof(pub_opts));
@@ -42,8 +42,8 @@ void rpc_local_rpcd_handler(struct mg_connection *c, struct mg_str topic, struct
         pub_opts.message = data;
         pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
         mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
-        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.ptr,
-            (int) pubt.len, pubt.ptr));
+        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.buf,
+            (int) pubt.len, pubt.buf));
         free(pub_topic);
     }
 
@@ -54,17 +54,25 @@ void rpc_local_rpcd_handler(struct mg_connection *c, struct mg_str topic, struct
 device/+/rpc/response/{agent_id}/123
 */
 static struct mg_str proxy_id(struct mg_str topic, const char *agent_id) {
-    struct mg_str sub_topic_prefix = mg_str(agent_id);
-    const char *p = mg_strstr(topic, sub_topic_prefix);
-    if (p == NULL) {
-        return mg_str("0");
-    }
+    // struct mg_str sub_topic_prefix = mg_str(agent_id);
+    // const char *p = mg_strstr(topic, sub_topic_prefix);
+    // if (p == NULL) {
+    //     return mg_str("0");
+    // }
 
-    struct mg_str topic_prefix = mg_str_n(p, topic.len - (p - topic.ptr));
+    // #/{agent_id}/*
+    char *pattern = mg_mprintf("#/%s/*", agent_id);
+    struct mg_str caps[3] = {mg_str("0"), mg_str("0"), mg_str("0")};
 
-    struct mg_str cid = mg_str_n(topic_prefix.ptr + sub_topic_prefix.len + 1, topic_prefix.len - sub_topic_prefix.len -1);
-    MG_DEBUG(("topic: %.*s, topic_prefix: %.*s, cid: %.*s", (int)topic.len, topic.ptr, (int)topic_prefix.len, topic_prefix.ptr, (int)cid.len, cid.ptr));
-    return cid;
+    mg_match(topic, mg_str(pattern), caps);
+    free(pattern);
+    return caps[1];
+
+    // struct mg_str topic_prefix = mg_str_n(p, topic.len - (p - topic.buf));
+
+    // struct mg_str cid = mg_str_n(topic_prefix.buf + sub_topic_prefix.len + 1, topic_prefix.len - sub_topic_prefix.len -1);
+    // MG_DEBUG(("topic: %.*s, topic_prefix: %.*s, cid: %.*s", (int)topic.len, topic.buf, (int)topic_prefix.len, topic_prefix.buf, (int)cid.len, cid.buf));
+    // return cid;
 }
 
 void rpc_local_proxy_handler(struct mg_connection *c, struct mg_str topic, struct mg_str data) {
@@ -87,7 +95,7 @@ void rpc_local_proxy_handler(struct mg_connection *c, struct mg_str topic, struc
     }
 
     struct mg_str req_info = mg_str(s->req_info);
-    char *pub_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.ptr);
+    char *pub_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.buf);
     struct mg_str pubt = mg_str(pub_topic);
 
     if (priv->cloud_mqtt_conn != NULL) {
@@ -97,8 +105,8 @@ void rpc_local_proxy_handler(struct mg_connection *c, struct mg_str topic, struc
         pub_opts.message = data;
         pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
         mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
-        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.ptr,
-            (int) pubt.len, pubt.ptr));
+        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.buf,
+            (int) pubt.len, pubt.buf));
     }
     LIST_DELETE(struct agent_session, &priv->sessions, s);
     free(s);
@@ -133,7 +141,7 @@ void rpc_local_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
         return;
     }
 
-    struct mg_str typ = mg_str_n(topic.ptr, 2);
+    struct mg_str typ = mg_str_n(topic.buf, 2);
 
     if ( !mg_strcmp(typ, mg_str("mg")) ) { //from rpcd
         rpc_local_rpcd_handler(c, topic, data);
@@ -144,11 +152,11 @@ void rpc_local_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
 }
 
 
-static void download_fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void download_fn(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
-    struct iot_http_info *hi = (struct iot_http_info *)fn_data;
+    struct iot_http_info *hi = (struct iot_http_info *)c->fn_data;
     if (ev == MG_EV_CONNECT) {
         // Connected to server. Extract host name from URL
         struct mg_str host = mg_url_host(hi->url);
@@ -166,25 +174,49 @@ static void download_fn(struct mg_connection *c, int ev, void *ev_data, void *fn
                 "Keep-Alive: timeout=60\r\n"
                 "Host: %.*s\r\n"
                 "\r\n",
-                mg_url_uri(hi->url), (int) host.len, host.ptr);
-    } else if (ev == MG_EV_HTTP_CHUNK) {
-        struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-
-        if (hi->fd == NULL && hm->chunk.len) { //open file
-            mg_snprintf(hi->filepath, MG_PATH_MAX-1, "%s/iot_cloud_%s", priv->cfg.opts->http_download_dir, hi->filename);
-            //删除已有文件
-            priv->fs->rm(hi->filepath);
-            hi->fd = priv->fs->op(hi->filepath, MG_FS_WRITE);
-            mg_md5_init(&hi->md5_ctx);
+                mg_url_uri(hi->url), (int) host.len, host.buf);
+    } else if (ev == MG_EV_READ) {
+        // c->data[0] holds a flag, whether we have parsed the request already
+        MG_DEBUG(("download %s, recv len: %d", hi->url, c->recv.len));
+        if (c->data[0] == 0) {
+            struct mg_http_message hm;
+            int n = mg_http_parse((char *) c->recv.buf, c->recv.len, &hm);
+            if (n < 0) mg_error(c, "Bad response");
+            if (n > 0) {
+                mg_snprintf(hi->filepath, MG_PATH_MAX-1, "%s/iot_cloud_%s", priv->cfg.opts->http_download_dir, hi->filename);
+                //删除已有文件
+                priv->fs->rm(hi->filepath);
+                priv->fs->mkd(priv->cfg.opts->http_download_dir);
+                hi->fd = priv->fs->op(hi->filepath, MG_FS_WRITE);
+                mg_md5_init(&hi->md5_ctx);
+                if (hi->fd && c->recv.len - n > 0) {
+                    priv->fs->wr(hi->fd, c->recv.buf + n, c->recv.len - n);
+                    mg_md5_update(&hi->md5_ctx, (const unsigned char *)(c->recv.buf + n), c->recv.len - n);
+                    hi->filesize += c->recv.len - n;
+                }
+                hi->active = mg_now();
+                c->recv.len = 0;  // Cleanup receive buffer
+                c->data[0] = 1;   // Request parsed, set the flag
+            }
+        } else {
+            if (hi->fd && c->recv.len > 0) {
+                priv->fs->wr(hi->fd, c->recv.buf, c->recv.len);
+                mg_md5_update(&hi->md5_ctx, (const unsigned char *)c->recv.buf, c->recv.len);
+                hi->filesize += c->recv.len;
+                hi->active = mg_now();
+            }
+            c->recv.len = 0;  // Cleanup the receive buffer
         }
-        if (hi->fd && hm->chunk.len) {
-            priv->fs->wr(hi->fd, hm->chunk.ptr, hm->chunk.len);
-            mg_md5_update(&hi->md5_ctx, (const unsigned char *)hm->chunk.ptr, hm->chunk.len);
-            hi->filesize += hm->chunk.len;
+    } else if (ev == MG_EV_POLL) {
+        if (c->data[0] == 1 && mg_now() - hi->active > 3 * 1000) { // 3 seconds timeout
+            MG_DEBUG(("download %s timeout", hi->url));
+            c->is_closing = 1; // Close connection if no data received for a while
         }
-
-        mg_http_delete_chunk(c, hm);
-        if (hm->chunk.len == 0) {// Last chunk
+    } else if (ev == MG_EV_ERROR) {
+        c->is_closing = 1;
+    } else if (ev == MG_EV_CLOSE) {
+        MG_DEBUG(("download finish"));
+        if (hi->fd) {
             unsigned char md5[16] = {0};
             char md5sum[33] = {0};
             if (hi->filesize) {
@@ -193,46 +225,28 @@ static void download_fn(struct mg_connection *c, int ev, void *ev_data, void *fn
                     mg_snprintf(&md5sum[i*2], 3, "%02x", md5[i]);
                 }
             }
-            if (hi->fd) {
-                hi->success = true;
-                priv->fs->cl(hi->fd);
-                hi->fd = NULL;
-                hi->filesize = 0;
-                //resonse
-                if (priv->cloud_mqtt_conn != NULL) {
-                    char *resp = mg_mprintf("{\"code\": 0, \"data\": {\"filename\": \"%s\", \"filepath\": \"%s\", \"md5\": \"%s\"}}",
-                                            hi->filename, hi->filepath, md5sum);
-                    struct mg_mqtt_opts pub_opts;
-                    memset(&pub_opts, 0, sizeof(pub_opts));
-                    pub_opts.topic = mg_str(hi->topic);
-                    pub_opts.message = mg_str(resp);
-                    pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
-                    mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
-                    MG_DEBUG(("pub: %s -> %s", resp, hi->topic));
-                    free(resp);
-                }
-            }
-        }
-    } else if (ev == MG_EV_HTTP_MSG) {
-        // Response is received. Print it
-        struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        MG_DEBUG(("download msg"));
-        fwrite(hm->body.ptr, 1, hm->body.len, stdout);
-        c->is_closing = 1;         // Tell mongoose to close this connection
-    } else if (ev == MG_EV_ERROR) {
-        c->is_closing = 1;
-    } else if (ev == MG_EV_CLOSE) {
-        MG_DEBUG(("download finish"));
-        if (hi->fd) {
             priv->fs->cl(hi->fd);
-        }
-        if (hi->success == false && priv->cloud_mqtt_conn != NULL) {
-            struct mg_mqtt_opts pub_opts;
-            memset(&pub_opts, 0, sizeof(pub_opts));
-            pub_opts.topic = mg_str(hi->topic);
-            pub_opts.message = mg_str("{\"code\": -1}");
-            pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
-            mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
+            if (priv->cloud_mqtt_conn != NULL) {
+                char *resp = mg_mprintf("{\"code\": 0, \"data\": {\"filename\": \"%s\", \"filepath\": \"%s\", \"md5\": \"%s\"}}",
+                            hi->filename, hi->filepath, md5sum);
+                struct mg_mqtt_opts pub_opts;
+                memset(&pub_opts, 0, sizeof(pub_opts));
+                pub_opts.topic = mg_str(hi->topic);
+                pub_opts.message = mg_str(resp);
+                pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
+                mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
+                MG_DEBUG(("pub: %s -> %s", resp, hi->topic));
+                free(resp);
+            }
+        } else {
+            if (priv->cloud_mqtt_conn != NULL) {
+                struct mg_mqtt_opts pub_opts;
+                memset(&pub_opts, 0, sizeof(pub_opts));
+                pub_opts.topic = mg_str(hi->topic);
+                pub_opts.message = mg_str("{\"code\": -1}");
+                pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
+                mg_mqtt_pub(priv->cloud_mqtt_conn, &pub_opts);
+            }
         }
         free(hi);
     }
@@ -284,8 +298,8 @@ void rpc_agent_download_handler(struct mg_connection *c, struct mg_str pub_topic
     }
     mg_snprintf(hi->url, MG_PATH_MAX-1, "%s", cJSON_GetStringValue(url));
     mg_snprintf(hi->filename, MG_PATH_MAX-1, "%s", cJSON_GetStringValue(filename));
-    mg_snprintf(hi->topic, MQTT_MAX_TOPIC_LEN-1, "%.*s", pub_topic.len, pub_topic.ptr);
-    mg_http_connect(c->mgr, hi->url, download_fn, hi);  // Create client connection
+    mg_snprintf(hi->topic, MQTT_MAX_TOPIC_LEN-1, "%.*s", pub_topic.len, pub_topic.buf);
+    mg_connect(c->mgr, hi->url, download_fn, hi);  // Create client connection
 
 }
 
@@ -304,7 +318,7 @@ void rpc_agent_rpcd_handler(struct mg_connection *c, struct mg_str pub_topic, st
         pub_opts.message = data;
         pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
         mg_mqtt_pub(priv->mqtt_conn, &pub_opts);
-        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.ptr, pub_topic.len, pub_topic.ptr));    
+        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.buf, pub_topic.len, pub_topic.buf));
     }
 }
 
@@ -323,7 +337,7 @@ void rpc_agent_proxy_handler(struct mg_connection *c, struct mg_str req_info, cJ
     }
     s->proxy_id = ++priv->proxy_id;
     s->expire = mg_millis() + 300 * 1000; //300s timeout
-    mg_snprintf(s->req_info, sizeof(s->req_info) - 1, "%.*s", req_info.len, req_info.ptr);
+    mg_snprintf(s->req_info, sizeof(s->req_info) - 1, "%.*s", req_info.len, req_info.buf);
     LIST_ADD_HEAD(struct agent_session, &priv->sessions, s);
 
     char *topic = mg_mprintf(IOT_AGENT_PROXY_REQ_TOPIC, to_value, priv->agent_id, s->proxy_id);
@@ -339,7 +353,7 @@ void rpc_agent_proxy_handler(struct mg_connection *c, struct mg_str req_info, cJ
         pub_opts.message = data;
         pub_opts.qos = MQTT_QOS, pub_opts.retain = false;
         mg_mqtt_pub(priv->mqtt_conn, &pub_opts);
-        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.ptr, pub_topic.len, pub_topic.ptr));    
+        MG_DEBUG(("pub %.*s -> %.*s", (int) data.len, data.buf, pub_topic.len, pub_topic.buf));
     }
     free(topic);
     free(printed);
@@ -352,10 +366,10 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
 
     char *topic_prefix = NULL, *pub_rpcd_topic = NULL, *pub_controller_topic = NULL;
 
-    cJSON *root = cJSON_ParseWithLength(data.ptr, data.len);
+    cJSON *root = cJSON_ParseWithLength(data.buf, data.len);
 
     //receive device/{devid}/rpc/request/{ServiceID}/{reqId} via agent-mqtt
-    if (mg_strstr(topic, mg_str(IOT_AGENT_DEVICE_ALL_PREFIX))) {
+    if (mg_match(topic, mg_str(IOT_AGENT_DEVICE_ALL_PREFIX"/#"), NULL)) {
         topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, IOT_AGENT_DEVICE_ALL);
         cJSON *filter = cJSON_GetObjectItem(root, FIELD_FILTER);
         if (cJSON_IsArray(filter)) {
@@ -377,12 +391,12 @@ void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
         topic_prefix = mg_mprintf(IOT_AGENT_REQ_TOPIC_PREFIX, priv->cfg.opts->cloud_mqtt_username);
     }
     //dump {ServiceID}/{reqId}
-    struct mg_str req_info = mg_str_n(topic.ptr + mg_str(topic_prefix).len, topic.len - mg_str(topic_prefix).len);
+    struct mg_str req_info = mg_str_n(topic.buf + mg_str(topic_prefix).len, topic.len - mg_str(topic_prefix).len);
 
     //pub to rpcd topic: mg/iot-agent/{agent-id}controller/{ServiceID}/{reqId}/iot-rpcd via local-mqtt
-    pub_rpcd_topic = mg_mprintf(IOT_AGENT_RPCD_CONTROLLER_TOPIC, priv->agent_id, req_info.len, req_info.ptr);
+    pub_rpcd_topic = mg_mprintf(IOT_AGENT_RPCD_CONTROLLER_TOPIC, priv->agent_id, req_info.len, req_info.buf);
     //pub to controller topic: device/{devid}/rpc/response/{ServiceID}/{reqId} via agent-mqtt
-    pub_controller_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.ptr);
+    pub_controller_topic = mg_mprintf(IOT_AGENT_RESP_TOPIC, priv->cfg.opts->cloud_mqtt_username, req_info.len, req_info.buf);
 
     //check args
     cJSON *method = cJSON_GetObjectItem(root, FIELD_METHOD);

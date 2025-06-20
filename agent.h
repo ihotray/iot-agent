@@ -19,7 +19,7 @@ struct agent_option {
 
     const char *cloud_mqtts_ca;
     const char *cloud_mqtts_cert;
-    const char *cloud_mqtts_certkey;
+    const char *cloud_mqtts_key;
 
     const char *dns4_url;
     int dns4_timeout;

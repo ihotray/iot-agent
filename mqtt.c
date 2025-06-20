@@ -32,20 +32,20 @@ void rpc_local_msg_handler(struct mg_connection *c, struct mg_str topic, struct 
 void rpc_agent_msg_handler(struct mg_connection *c, struct mg_str topic, struct mg_str data);
 
 
-static void mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("mqtt client connection created"));
 }
 
-static void mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("mqtt client connection connected"));
 }
 
-static void mqtt_ev_error_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_error_cb(struct mg_connection *c, int ev, void *ev_data) {
     MG_ERROR(("%p %s", c->fd, (char *) ev_data));
     c->is_closing = 1;
 }
 
-static void mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     if (!priv->cfg.opts->mqtt_keepalive) //no keepalive
@@ -61,7 +61,7 @@ static void mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data, void
 
 }
 
-static void mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     MG_INFO(("mqtt client connection closed"));
@@ -70,7 +70,7 @@ static void mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_data, voi
 }
 
 
-static void mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
@@ -84,19 +84,19 @@ static void mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data,
     sub_opts.topic = subt;
     sub_opts.qos = MQTT_QOS;
     mg_mqtt_sub(c, &sub_opts);
-    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
+    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.buf));
     free(topic);
 
     topic = mg_mprintf(IOT_AGENT_PROXY_RESP_TOPIC, priv->agent_id);
     subt = mg_str(topic);
     sub_opts.topic = subt;
     mg_mqtt_sub(c, &sub_opts);
-    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
+    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.buf));
     free(topic);
 
 }
 
-static void mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
@@ -106,50 +106,50 @@ static void mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_data, 
     }
 }
 
-static void mqtt_ev_mqtt_msg_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_ev_mqtt_msg_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-    MG_DEBUG(("received %.*s <- %.*s", (int) mm->data.len, mm->data.ptr,
-        (int) mm->topic.len, mm->topic.ptr));
+    MG_DEBUG(("received %.*s <- %.*s", (int) mm->data.len, mm->data.buf,
+        (int) mm->topic.len, mm->topic.buf));
 
     // handle msg
     rpc_local_msg_handler(c, mm->topic, mm->data);
 
 }
 
-static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void mqtt_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     switch (ev) {
         case MG_EV_OPEN:
-            mqtt_ev_open_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_open_cb(c, ev, ev_data);
             break;
 
         case MG_EV_CONNECT:
-            mqtt_ev_connect_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_connect_cb(c, ev, ev_data);
             break;
 
         case MG_EV_ERROR:
-            mqtt_ev_error_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_error_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_OPEN:
-            mqtt_ev_mqtt_open_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_mqtt_open_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_CMD:
-            mqtt_ev_mqtt_cmd_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_mqtt_cmd_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_MSG:
-            mqtt_ev_mqtt_msg_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_mqtt_msg_cb(c, ev, ev_data);
             break;
 
         case MG_EV_POLL:
-            mqtt_ev_poll_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_poll_cb(c, ev, ev_data);
             break;
 
         case MG_EV_CLOSE:
-            mqtt_ev_close_cb(c, ev, ev_data, fn_data);
+            mqtt_ev_close_cb(c, ev, ev_data);
             break;
     }
 }
@@ -231,11 +231,11 @@ done:
 
 }
 
-static void cloud_mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_open_cb(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("cloud mqtt client connection created"));
 }
 
-static void cloud_mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
@@ -243,9 +243,9 @@ static void cloud_mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_d
 
     if (mg_url_is_ssl(priv->cfg.opts->cloud_mqtt_serve_address)) {
         struct mg_tls_opts opts = { 0 };
-        opts.ca = priv->cfg.opts->cloud_mqtts_ca;
-        opts.cert = priv->cfg.opts->cloud_mqtts_cert;
-        opts.certkey = priv->cfg.opts->cloud_mqtts_certkey;
+        opts.ca = mg_str(priv->cfg.opts->cloud_mqtts_ca);
+        opts.cert = mg_str(priv->cfg.opts->cloud_mqtts_cert);
+        opts.key = mg_str(priv->cfg.opts->cloud_mqtts_key);
 
         mg_tls_init(c, &opts);
 
@@ -253,12 +253,12 @@ static void cloud_mqtt_ev_connect_cb(struct mg_connection *c, int ev, void *ev_d
 
 }
 
-static void cloud_mqtt_ev_error_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_error_cb(struct mg_connection *c, int ev, void *ev_data) {
     MG_ERROR(("%lu %s", c->id, (char *) ev_data));
     c->is_closing = 1;
 }
 
-static void cloud_mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     if (!priv->cfg.opts->cloud_mqtt_keepalive) //no keepalive
@@ -274,7 +274,7 @@ static void cloud_mqtt_ev_poll_cb(struct mg_connection *c, int ev, void *ev_data
 
 }
 
-static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
     MG_INFO(("cloud mqtt client connection closed"));
@@ -286,7 +286,7 @@ static void cloud_mqtt_ev_close_cb(struct mg_connection *c, int ev, void *ev_dat
 
 }
 
-static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
 
@@ -299,7 +299,7 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
     sub_opts.topic = subt;
     sub_opts.qos = MQTT_QOS;
     mg_mqtt_sub(c, &sub_opts);
-    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
+    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.buf));
     free(topic);
 
     // subscribe all
@@ -307,7 +307,7 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
     subt = mg_str(topic);
     sub_opts.topic = subt;
     mg_mqtt_sub(c, &sub_opts);
-    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.ptr));
+    MG_INFO(("subscribed to %.*s", (int) subt.len, subt.buf));
     free(topic);
 
     priv->registered = 1;
@@ -315,7 +315,7 @@ static void cloud_mqtt_ev_mqtt_open_cb(struct mg_connection *c, int ev, void *ev
 
 }
 
-static void cloud_mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
     struct agent_private *priv = (struct agent_private*)c->mgr->userdata;
@@ -327,11 +327,11 @@ static void cloud_mqtt_ev_mqtt_cmd_cb(struct mg_connection *c, int ev, void *ev_
 }
 
 
-static void cloud_mqtt_ev_mqtt_msg_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_ev_mqtt_msg_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-    MG_DEBUG(("received %.*s <- %.*s", (int) mm->data.len, mm->data.ptr,
-        (int) mm->topic.len, mm->topic.ptr));
+    MG_DEBUG(("received %.*s <- %.*s", (int) mm->data.len, mm->data.buf,
+        (int) mm->topic.len, mm->topic.buf));
 
     // handle msg
     rpc_agent_msg_handler(c, mm->topic, mm->data);
@@ -339,39 +339,39 @@ static void cloud_mqtt_ev_mqtt_msg_cb(struct mg_connection *c, int ev, void *ev_
 }
 
 
-static void cloud_mqtt_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void cloud_mqtt_cb(struct mg_connection *c, int ev, void *ev_data) {
 
     switch (ev) {
         case MG_EV_OPEN:
-            cloud_mqtt_ev_open_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_open_cb(c, ev, ev_data);
             break;
 
         case MG_EV_CONNECT:
-            cloud_mqtt_ev_connect_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_connect_cb(c, ev, ev_data);
             break;
 
         case MG_EV_ERROR:
-            cloud_mqtt_ev_error_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_error_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_OPEN:
-            cloud_mqtt_ev_mqtt_open_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_mqtt_open_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_CMD:
-            cloud_mqtt_ev_mqtt_cmd_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_mqtt_cmd_cb(c, ev, ev_data);
             break;
 
         case MG_EV_MQTT_MSG:
-            cloud_mqtt_ev_mqtt_msg_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_mqtt_msg_cb(c, ev, ev_data);
             break;
 
         case MG_EV_POLL:
-            cloud_mqtt_ev_poll_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_poll_cb(c, ev, ev_data);
             break;
 
         case MG_EV_CLOSE:
-            cloud_mqtt_ev_close_cb(c, ev, ev_data, fn_data);
+            cloud_mqtt_ev_close_cb(c, ev, ev_data);
             break;
     }
 }
@@ -397,6 +397,15 @@ void timer_cloud_mqtt_fn(void *arg) {
         opts.version = 4;
         opts.user = mg_str(priv->cfg.opts->cloud_mqtt_username);
         opts.pass = mg_str(priv->cfg.opts->cloud_mqtt_password);
+
+        if ( mgr->dns4.c ) {
+            mgr->dns4.c->is_closing = 1; //close dns4 connection
+            mgr->dns4.c = NULL; //reset dns4 connection
+        }
+        if ( mgr->dns6.c ) {
+            mgr->dns6.c->is_closing = 1; //close dns6 connection
+            mgr->dns6.c = NULL; //reset dns6 connection
+        }
 
         priv->cloud_mqtt_conn = mg_mqtt_connect(mgr, priv->cfg.opts->cloud_mqtt_serve_address, &opts, cloud_mqtt_cb, NULL);
         priv->cloud_ping_active = now;

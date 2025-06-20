@@ -22,12 +22,10 @@ int agent_init(void **priv, void *opts) {
     p = calloc(1, sizeof(struct agent_private));
     if (!p)
         return -1;
-    
+
     //生成agent id
-    char rnd[10];
-    mg_random(rnd, sizeof(rnd));
-    mg_hex(rnd, sizeof(rnd), p->agent_id);
-    
+    mg_random_str(p->agent_id, sizeof(p->agent_id) - 1);
+
     p->cfg.opts = opts;
     mg_log_set(p->cfg.opts->debug_level);
 
