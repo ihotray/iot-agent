@@ -391,7 +391,7 @@ void timer_cloud_mqtt_fn(void *arg) {
         }
 
         opts.clean = true;
-        opts.qos = MQTT_QOS;
+        opts.qos = 0;
         opts.message = mg_str("goodbye");
         opts.keepalive = priv->cfg.opts->cloud_mqtt_keepalive;
         opts.version = 4;
