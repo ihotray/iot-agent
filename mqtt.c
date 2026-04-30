@@ -390,6 +390,17 @@ void timer_cloud_mqtt_fn(void *arg) {
             opts.client_id = mg_str(priv->cfg.opts->cloud_mqtt_client_id);
         }
 
+        // use new connection to replace old dns connection if exist, avoid dns loop
+        if (mgr->dns4.c) {
+            mgr->dns4.c->is_draining = 1; //close dns connection if exist, avoid dns loop
+            mgr->dns4.c = NULL;
+        }
+
+        if (mgr->dns6.c) {
+            mgr->dns6.c->is_draining = 1; //close dns connection if exist, avoid dns loop
+            mgr->dns6.c = NULL;
+        }
+
         opts.clean = true;
         opts.qos = 0;
         opts.message = mg_str("goodbye");
